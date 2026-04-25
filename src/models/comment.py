@@ -1,12 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import Integer, DateTime, String, ForeignKey, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 
 
 class PostComment(Base):
+    """Модель комментария к посту."""
+
     __tablename__ = "post_comments"
 
     comment_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -32,7 +34,6 @@ class PostComment(Base):
         back_populates="comment",
         cascade="all, delete-orphan"
     )
-
     user: Mapped["AuthUser"] = relationship(
         "AuthUser",
         back_populates="comments"
@@ -40,6 +41,8 @@ class PostComment(Base):
 
 
 class CommentLike(Base):
+    """Модель лайка комментария."""
+
     __tablename__ = "comment_likes"
 
     comment_id: Mapped[int] = mapped_column(
@@ -60,7 +63,6 @@ class CommentLike(Base):
         "PostComment",
         back_populates="likes"
     )
-
     user: Mapped["AuthUser"] = relationship(
         "AuthUser",
         back_populates="comment_likes"

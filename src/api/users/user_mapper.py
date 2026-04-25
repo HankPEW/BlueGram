@@ -3,9 +3,11 @@ from src.models import AuthUser
 
 
 class UserMapper:
+    """Маппер для преобразования AuthUser в схему ответа профиля."""
 
     @staticmethod
     def to_response(auth_user: AuthUser) -> ReadProfileResponse:
+        """Преобразует объект AuthUser в схему ReadProfileResponse."""
         profile = auth_user.profile
 
         return ReadProfileResponse(

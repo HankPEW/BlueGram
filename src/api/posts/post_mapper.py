@@ -3,10 +3,11 @@ from src.models import Post
 
 
 class PostMapper:
+    """Маппер для преобразования поста в response-схему."""
 
     @staticmethod
     def to_response(post: Post) -> ReadPostResponse:
-
+        """Преобразует модель Post в ReadPostResponse."""
         return ReadPostResponse(
             id=post.post_id,
             title=post.title,

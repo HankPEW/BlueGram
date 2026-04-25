@@ -1,11 +1,19 @@
-from typing import Optional, Literal, Annotated
 from datetime import date, datetime
-from pydantic import Field, AfterValidator
+from typing import Annotated, Literal, Optional
 
-from src.api.auth.schemas import ProfileBase, PhoneStr, login_validation, birth_validator, EmailStr, NameStr
+from pydantic import AfterValidator, Field
 
+from src.api.auth.schemas import (
+    EmailStr,
+    NameStr,
+    PhoneStr,
+    ProfileBase,
+    birth_validator,
+    login_validation,
+)
 
 class FullProfileBase(ProfileBase):
+    """Базовая схема полного профиля пользователя с дополнительными полями."""
     career: Optional[str] = Field(
         default=None,
         min_length=2,
@@ -40,10 +48,12 @@ class FullProfileBase(ProfileBase):
 
 
 class ReadProfileResponse(FullProfileBase):
+    """Схема ответа с данными профиля пользователя."""
     created_at: datetime
 
 
 class UpdateProfileRequest(FullProfileBase):
+    """Схема запроса для обновления профиля пользователя."""
     login: Optional[Annotated[str, AfterValidator(login_validation)]] = None
     email: Optional[EmailStr] = None
     first_name: Optional[NameStr] = None

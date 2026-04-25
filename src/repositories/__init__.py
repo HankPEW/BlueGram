@@ -1,4 +1,4 @@
 from .auth_repository import AuthRepository
-from .user_repository import UserRepository
-from .post_repository import PostRepository
 from .comment_repository import CommentRepository
+from .post_repository import PostRepository
+from .user_repository import UserRepository

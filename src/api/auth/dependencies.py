@@ -2,8 +2,8 @@ import jwt
 from fastapi import Request, HTTPException, Depends
 
 from src.api.auth.schemas import CurrentUser
-from src.datebase.dependencies import get_uow
-from src.datebase.dbmanager import DBManager
+from src.database.dependencies import get_uow
+from src.database.dbmanager import DBManager
 from src.settings import settings
 
 
@@ -11,6 +11,7 @@ async def get_current_user(
     request: Request,
     uow: DBManager = Depends(get_uow)
 ) -> CurrentUser:
+    """Получает текущего пользователя по access token из cookies."""
     token = _extract_access_token(request)
 
     try:
@@ -49,6 +50,7 @@ async def get_current_user(
 
 
 def _extract_access_token(request: Request) -> str:
+    """Извлекает access token из cookies запроса."""
     cookie_token = request.cookies.get("access_token")
 
     if cookie_token:

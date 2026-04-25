@@ -1,71 +1,86 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.params import Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.api.auth.dependencies import get_current_user
 from src.api.auth.schemas import CurrentUser
-from src.api.users.schemas import UpdateProfileRequest, ReadProfileResponse
-from src.api.users.user_mapper import UserMapper
-from src.datebase.dependencies import get_uow
+from src.api.users.schemas import ReadProfileResponse, UpdateProfileRequest
 from src.repositories.exceptions import RepositoryError
-from src.datebase.dbmanager import DBManager
 from src.services import UserService
-from src.services.exceptions import UserNotFoundError, LoginAlreadyExistsError, EmailAlreadyExistsError, \
-    FieldCannotBeChangedError
+from src.services.dependencies.user_profile import get_user_profile_service
+from src.services.exceptions import (
+    EmailAlreadyExistsError,
+    FieldCannotBeChangedError,
+    LoginAlreadyExistsError,
+    UserNotFoundError,
+)
 
 
-users_router = APIRouter(prefix="/profile")
+users_router = APIRouter(prefix="/profile", tags=["Profiles"])
 
 
 @users_router.get("/me", response_model=ReadProfileResponse)
 async def get_my_profile(
     user: CurrentUser = Depends(get_current_user),
-    uow: DBManager = Depends(get_uow)
-):
-    service = UserService(uow)
-
+    service: UserService = Depends(get_user_profile_service)
+) -> ReadProfileResponse:
+    """Возвращает профиль текущего пользователя."""
     try:
         auth_user = await service.get_user_profile_or_fail(user.id)
-
     except UserNotFoundError:
-        raise HTTPException(401, "Invalid credentials")
-
+        raise HTTPException(
+            401,
+            "Invalid credentials"
+        )
     except RepositoryError:
-        raise HTTPException(500, "An internal server error occurred.")
+        raise HTTPException(
+            500,
+            "An internal server error occurred."
+        )
 
-    return UserMapper.to_response(auth_user)
+    return auth_user
 
 
-@users_router.get("/{user_id}", response_model=ReadProfileResponse)
-async def get_user_profile(user_id: int, uow: DBManager = Depends(get_uow)):
-    service = UserService(uow)
-
+@users_router.get(
+    "/{user_id}",
+    response_model=ReadProfileResponse
+)
+async def get_user_profile(
+    user_id: int,
+    service: UserService = Depends(get_user_profile_service)
+) -> ReadProfileResponse:
+    """Возвращает профиль пользователя по его ID."""
     try:
         auth_user = await service.get_user_profile_or_fail(user_id)
-
     except UserNotFoundError:
-        raise HTTPException(404, "Invalid credentials")
-
+        raise HTTPException(
+            404,
+            "Invalid credentials"
+        )
     except RepositoryError:
-        raise HTTPException(500, "An internal server error occurred.")
+        raise HTTPException(
+            500,
+            "An internal server error occurred."
+        )
 
-    return UserMapper.to_response(auth_user)
+    return auth_user
 
 
-@users_router.patch("/me", response_model=ReadProfileResponse)
+@users_router.patch(
+    "/me",
+    response_model=ReadProfileResponse
+)
 async def update_user_profile(
     data: UpdateProfileRequest,
     user: CurrentUser = Depends(get_current_user),
-    uow: DBManager = Depends(get_uow)
-):
-    service = UserService(uow)
-
+    service: UserService = Depends(get_user_profile_service)
+) -> ReadProfileResponse:
+    """Обновляет профиль текущего пользователя."""
     try:
-        async with uow:
-            auth_user = await service.update_user_profile(user.id, data)
-
+        auth_user = await service.update_user_profile(user.id, data)
     except UserNotFoundError:
-        raise HTTPException(404, "Invalid credentials")
-
+        raise HTTPException(
+            404,
+            "Invalid credentials"
+        )
     except LoginAlreadyExistsError:
         raise HTTPException(
             409,
@@ -82,6 +97,9 @@ async def update_user_profile(
         "Field can not be updated."
         )
     except RepositoryError:
-        raise HTTPException(500, "An internal server error occurred.")
+        raise HTTPException(
+            500,
+            "An internal server error occurred."
+        )
 
-    return UserMapper.to_response(auth_user)
+    return auth_user

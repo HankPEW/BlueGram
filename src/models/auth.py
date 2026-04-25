@@ -1,12 +1,21 @@
 from datetime import datetime
 
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import Integer, DateTime, String, ForeignKey, func, Boolean
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
-### НЕ ЗАБУДЬ ПЕРЕСТАВИТЬ МЕСТАМИ
+
 
 class AuthUser(Base):
+    """Модель пользователя для аутентификации."""
+
     __tablename__ = "auth_users"
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -68,6 +77,8 @@ class AuthUser(Base):
 
 
 class RefreshToken(Base):
+    """Модель refresh токена пользователя."""
+
     __tablename__ = "refresh_tokens"
 
     token_id: Mapped[int] = mapped_column(primary_key=True)

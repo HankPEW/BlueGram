@@ -1,5 +1,5 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.auth.schemas import RegisterRequest
@@ -8,16 +8,18 @@ from src.repositories.exceptions import handle_repository_errors
 
 
 class UserRepository:
+    """Репозиторий для работы с пользователями."""
 
     def __init__(self, db: AsyncSession):
+        """Инициализация репозитория с сессией базы данных."""
         self.db = db
-
 
     async def get_user_by_login(
         self,
         login: str,
         with_profile: bool = False
-    ):
+    ) -> AuthUser | None:
+        """Возвращает пользователя по логину."""
         auth_user_query = select(AuthUser).where(AuthUser.login == login)
 
         options = [selectinload(AuthUser.profile)] if with_profile else []
@@ -25,9 +27,13 @@ class UserRepository:
 
         return await self.db.scalar(auth_user_query)
 
-
     @handle_repository_errors
-    async def get_user_by_id(self, user_id: int, with_profile: bool = False):
+    async def get_user_by_id(
+        self,
+        user_id: int,
+        with_profile: bool = False
+    ) -> AuthUser | None:
+        """Возвращает пользователя по ID."""
         auth_user_query = select(AuthUser).where(AuthUser.user_id == user_id)
 
         options = [selectinload(AuthUser.profile)] if with_profile else []
@@ -36,7 +42,11 @@ class UserRepository:
         return await self.db.scalar(auth_user_query)
 
     @handle_repository_errors
-    async def exists_login(self, login: str):
+    async def exists_login(
+        self,
+        login: str
+    ) -> bool:
+        """Проверяет, существует ли пользователь с таким логином."""
         login_exists = await self.db.scalar(
             select(AuthUser.login)
             .where(AuthUser.login == login)
@@ -45,7 +55,11 @@ class UserRepository:
         return bool(login_exists)
 
     @handle_repository_errors
-    async def exists_email(self, email: str):
+    async def exists_email(
+        self,
+        email: str
+    ) -> bool:
+        """Проверяет, существует ли пользователь с таким email."""
         email_exists = await self.db.scalar(
             select(AuthUser.email)
             .where(AuthUser.email == email)
@@ -54,7 +68,11 @@ class UserRepository:
         return bool(email_exists)
 
     @handle_repository_errors
-    async def add_auth_user(self, user: RegisterRequest):
+    async def add_auth_user(
+        self,
+        user: RegisterRequest
+    ) -> AuthUser:
+        """Создаёт пользователя и его профиль."""
         auth_user = AuthUser(
             login=user.login,
             email=user.email,
@@ -73,11 +91,12 @@ class UserRepository:
 
     @handle_repository_errors
     async def update_auth_user_profile(
-            self,
-            user_id: int,
-            auth_fields: dict,
-            profile_fields: dict,
-    ):
+        self,
+        user_id: int,
+        auth_fields: dict,
+        profile_fields: dict
+    ) -> AuthUser | None:
+        """Обновляет данные пользователя и его профиль."""
         if auth_fields:
             await self.db.execute(
                 update(AuthUser)
@@ -99,4 +118,3 @@ class UserRepository:
         )
 
         return auth_user
-

@@ -1,12 +1,14 @@
 from datetime import date
 
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import String, ForeignKey, Date
+from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 
 
 class UserProfile(Base):
+    """Модель профиля пользователя."""
+
     __tablename__ = "users_profiles"
 
     user_id: Mapped[int] = mapped_column(

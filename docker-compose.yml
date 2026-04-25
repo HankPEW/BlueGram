@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Anton2005
+      POSTGRES_DB: BlueGram
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d BlueGram"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fastapi_app:
+    build: .
+    container_name: fastapi_app
+    restart: always
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:Anton2005@postgres_db:5432/BlueGram
+    ports:
+      - "8000:8000"

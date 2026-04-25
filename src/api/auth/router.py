@@ -1,22 +1,38 @@
-from fastapi import APIRouter, HTTPException, Response, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Response,  Request
 
 from src.api.auth.auth_user_mapper import AuthUserMapper
-from src.api.auth.schemas import RegisterRequest, LoginRequest, ReadCurrentUser, TokenPair
-from src.datebase.dependencies import get_uow
-
+from src.api.auth.schemas import (
+    LoginRequest,
+    ReadCurrentUser,
+    RegisterRequest,
+    TokenPair
+)
 from src.repositories.exceptions import RepositoryError
-from src.services.auth_service import AuthUserService, AuthServiceJWT, RefreshTokenExpiredError, \
+from src.services.auth_service import (
+    AuthUserService,
+    RefreshTokenExpiredError,
     RefreshTokenNotFoundError
-from src.services.exceptions import UserNotFoundError, LoginIsExistsError, EmailIsExistsError, \
-    RegisterAuthUserError
-from src.datebase.dbmanager import DBManager
+)
+from src.services.dependencies.auth_user import get_auth_user_service
+from src.services.exceptions import (
+    EmailIsExistsError,
+    LoginIsExistsError,
+    RegisterAuthUserError,
+    UserNotFoundError
+
+)
 from src.settings import settings
 
 
-auth_router = APIRouter()
+auth_router = APIRouter(tags=["AuthUsers"])
 
 
-def _set_token_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _set_token_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str
+):
+    """Устанавливает access и refresh токены в cookies ответа."""
     response.set_cookie(
         key=settings.access_cookie_name,
         value=access_token,
@@ -41,15 +57,19 @@ def _set_token_cookies(response: Response, access_token: str, refresh_token: str
 
 @auth_router.post("/login")
 async def login(
-        user: LoginRequest,
-        response: Response,
-        uow: DBManager = Depends(get_uow)
-):
-    jwt_service = AuthServiceJWT(uow)
+    user: LoginRequest,
+    response: Response,
+    service: AuthUserService = Depends(get_auth_user_service)
+) -> TokenPair:
+    """Аутентифицирует пользователя и возвращает пару JWT токенов."""
     try:
-        access_token, refresh_token = await jwt_service.login(user.login, user.password)
+        access_token, refresh_token = await service.login(
+            user.login,
+            user.password
+        )
     except UserNotFoundError:
         raise HTTPException(401, "Wrong login or password.")
+
     _set_token_cookies(response, access_token, refresh_token)
 
     return TokenPair(
@@ -58,13 +78,16 @@ async def login(
     )
 
 
-@auth_router.post("/register", status_code=201, response_model=ReadCurrentUser)
+@auth_router.post(
+    "/register",
+    status_code=201,
+    response_model=ReadCurrentUser
+)
 async def registration(
-        user: RegisterRequest,
-        uow: DBManager = Depends(get_uow)
-):
-    service = AuthUserService(uow)
-
+    user: RegisterRequest,
+    service: AuthUserService = Depends(get_auth_user_service)
+) -> ReadCurrentUser:
+    """Регистрирует нового пользователя и возвращает его данные."""
     try:
         auth_user = await service.user_registration(user)
     except LoginIsExistsError:
@@ -83,21 +106,33 @@ async def registration(
             "User with these credentials already exists."
         )
     except RepositoryError:
-        raise HTTPException(500, "An internal server error occurred.")
+        raise HTTPException(
+            500,
+            "An internal server error occurred."
+        )
 
     return AuthUserMapper.to_response(
         "User has been registered.",
         auth_user
     )
 
-@auth_router.post("/token/refresh",response_model=TokenPair, summary="Обновление access/refresh токенов")
+
+@auth_router.post(
+    "/token/refresh",
+    response_model=TokenPair,
+    summary="Обновление access/refresh токенов"
+)
 async def refresh_tokens(
-    request: Request, response: Response, uow: DBManager = Depends(get_uow)
-):
-    jwt_service = AuthServiceJWT(uow)
+    request: Request,
+    response: Response,
+    service: AuthUserService = Depends(get_auth_user_service)
+) -> TokenPair:
+    """Обновляет access и refresh токены по refresh токену."""
     try:
-        refresh_token = request.cookies.get(settings.refresh_cookie_name)
-        pair = await jwt_service.refresh(refresh_token)
+        refresh_token = request.cookies.get(
+            settings.refresh_cookie_name
+        )
+        pair = await service.refresh(refresh_token)
     except RefreshTokenExpiredError:
         raise HTTPException(401, detail="Refresh token has expired.")
     except RefreshTokenNotFoundError:
@@ -105,21 +140,26 @@ async def refresh_tokens(
     except UserNotFoundError:
         raise HTTPException(401, detail="User not found.")
 
-    _set_token_cookies(response, pair.access_token, pair.refresh_token)
+    _set_token_cookies(
+        response,
+        pair.access_token,
+        pair.refresh_token
+    )
 
     return pair
 
 
 @auth_router.post("/logout", summary="Logout")
 async def logout(
-        request: Request,
-        response: Response,
-        db: DBManager = Depends(get_uow)
+    request: Request,
+    response: Response,
+    service: AuthUserService = Depends(get_auth_user_service)
 ):
-    service = AuthServiceJWT(db)
-
+    """Выход пользователя с удалением refresh токена и cookies."""
     try:
-        refresh_token = request.cookies.get(settings.refresh_cookie_name)
+        refresh_token = request.cookies.get(
+            settings.refresh_cookie_name
+        )
 
         if not refresh_token:
             raise HTTPException(401, "Refresh token missing")

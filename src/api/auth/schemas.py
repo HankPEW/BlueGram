@@ -1,9 +1,13 @@
 import string
+from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, AfterValidator, EmailStr, Field, model_validator
-from datetime import date, datetime
-
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    EmailStr, Field,
+    model_validator
+)
 from pydantic_core import PydanticCustomError
 
 
@@ -26,8 +30,9 @@ PasswordStr = Annotated[
         min_length=7,
         max_length=20,
         pattern=(
-            r"^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[{string.punctuation}])"
-            f"[{ALLOWED_CHARS + string.punctuation}]+$"
+            r"^(?=.*[A-Za-z])(?=.*[0-9])"
+            rf"(?=.*[{string.punctuation}])"
+            rf"[{ALLOWED_CHARS + string.punctuation}]+$"
         )
     )
 ]
@@ -35,17 +40,26 @@ PasswordStr = Annotated[
 
 PhoneStr = Annotated[
     str,
-    Field(min_length=10, max_length=15, pattern=r"^\+?\d+$")
+    Field(
+        min_length=10,
+        max_length=15,
+        pattern=r"^\+?\d+$"
+    )
 ]
 
 
 NameStr = Annotated[
     str,
-    Field(min_length=1, max_length=20, pattern=r"^[^\W\d_]+$")
+    Field(
+        min_length=1,
+        max_length=20,
+        pattern=r"^[^\W\d_]+$"
+    )
 ]
 
 
 def login_validation(login: str) -> str:
+    """Проверяет логин на допустимые символы, длину и наличие букв."""
     contains_allowed_chars = all(x in ALLOWED_CHARS for x in login)
     contains_letter = any(x in string.ascii_letters for x in login)
 
@@ -71,12 +85,15 @@ def login_validation(login: str) -> str:
 
 
 def password_validation(password: str) -> str:
+    """Проверяет пароль на сложность и допустимые символы."""
     contains_allowed_chars = all(
         x in ALLOWED_CHARS + string.punctuation
         for x in password
     )
     contains_letter = any(x in string.ascii_letters for x in password)
-    contains_special_symbol = any(x in string.punctuation for x in password)
+    contains_special_symbol = any(
+        x in string.punctuation for x in password
+    )
     contains_digit = any(x in string.digits for x in password)
 
     if not contains_allowed_chars:
@@ -84,7 +101,7 @@ def password_validation(password: str) -> str:
             "InvalidPasswordFormat",
             (
                 "The password may contain only latin letters, "
-            "digits and special symbols."
+                "digits and special symbols."
             )
         )
 
@@ -116,6 +133,7 @@ def password_validation(password: str) -> str:
 
 
 def birth_validator(birth: date) -> date:
+    """Проверяет корректность даты рождения."""
     if birth < date(1900, 1, 1):
         raise PydanticCustomError(
             "InvalidDatePastValue",
@@ -132,6 +150,7 @@ def birth_validator(birth: date) -> date:
 
 
 class ProfileBase(BaseModel):
+    """Базовая схема профиля пользователя."""
     login: Annotated[str, AfterValidator(login_validation)]
     email: EmailStr
     first_name: NameStr
@@ -140,12 +159,14 @@ class ProfileBase(BaseModel):
     birth: Annotated[date, AfterValidator(birth_validator)]
 
 class RegisterRequest(ProfileBase):
+    """Схема запроса на регистрацию пользователя."""
     password: Annotated[str, AfterValidator(password_validation)]
     repeated_password: str
     created_at: datetime
 
     @model_validator(mode="after")
     def password_match_validation(self):
+        """Проверяет совпадение пароля и повторного пароля."""
         if not self.password == self.repeated_password:
             raise PydanticCustomError(
                 "InvalidPasswordMatchValidation",
@@ -155,22 +176,27 @@ class RegisterRequest(ProfileBase):
 
 
 class LoginRequest(BaseModel):
+    """Схема запроса на авторизацию пользователя."""
     login: str = Field(min_length=7, max_length=20)
     password: str = Field(min_length=7, max_length=20)
 
 
 class CurrentUser(BaseModel):
+    """Схема текущего аутентифицированного пользователя."""
     id: int
     login: str
 
 
 class ReadCurrentUser(CurrentUser):
+    """Схема ответа с данными пользователя и сообщением."""
     message: str
 
 
 class TokenPair(BaseModel):
+    """Пара JWT токенов: access и refresh."""
     access_token: str
     refresh_token: str
 
 class RefreshRequest(BaseModel):
+    """Схема запроса на обновление токена."""
     refresh_token: str

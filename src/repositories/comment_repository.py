@@ -1,19 +1,31 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import delete, select, update, ScalarResult
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.api.comments.schemas import UpdateCommentRequest, CreateCommentRequest
-from src.models import PostComment, CommentLike
+from src.api.comments.schemas import (
+    CreateCommentRequest,
+    UpdateCommentRequest,
+)
+from src.models import CommentLike, PostComment
 from src.repositories.exceptions import handle_repository_errors
 
 
 class CommentRepository:
+    """Репозиторий для работы с комментариями."""
+
     def __init__(self, db: AsyncSession):
+        """Инициализация репозитория с сессией БД."""
         self.db = db
 
     @handle_repository_errors
-    async def get_post_comments(self, post_id: int, limit: int, offset: int):
+    async def get_post_comments(
+        self,
+        post_id: int,
+        limit: int,
+        offset: int
+     ) -> ScalarResult[PostComment]:
+        """Возвращает список комментариев к посту."""
         comments = await self.db.scalars(
             select(PostComment)
             .options(selectinload(PostComment.user))
@@ -26,7 +38,11 @@ class CommentRepository:
         return comments
 
     @handle_repository_errors
-    async def get_comment(self, comment_id: int):
+    async def get_comment(
+        self,
+        comment_id: int
+    ) -> PostComment | None:
+        """Возвращает комментарий по его ID."""
         comment = await self.db.scalar(
             select(PostComment)
             .options(selectinload(PostComment.user))
@@ -36,7 +52,13 @@ class CommentRepository:
         return comment
 
     @handle_repository_errors
-    async def add_comment(self, data: CreateCommentRequest, post_id: int, user_id: int):
+    async def add_comment(
+        self,
+        data: CreateCommentRequest,
+        post_id: int,
+        user_id: int
+    ) -> PostComment:
+        """Создаёт новый комментарий к посту."""
         new_comment = await self.db.execute(
             insert(PostComment)
             .values(
@@ -48,11 +70,17 @@ class CommentRepository:
         )
 
         new_comment = new_comment.scalar_one()
-
         return await self.get_comment(new_comment.comment_id)
 
     @handle_repository_errors
-    async def update_comment(self, data: UpdateCommentRequest, comment_id: int, user_id: int):
+    async def update_comment(
+        self,
+        data: UpdateCommentRequest,
+        comment_id: int,
+        user_id: int
+    ) -> int | None:
+        """Обновляет текст комментария пользователя.
+        Возвращает айди обновленного поста для проверки."""
         updated_comment_id = await self.db.execute(
             update(PostComment)
             .where(
@@ -66,7 +94,13 @@ class CommentRepository:
         return updated_comment_id.scalar()
 
     @handle_repository_errors
-    async def delete_comment(self, comment_id: int, user_id: int):
+    async def delete_comment(
+        self,
+        comment_id: int,
+        user_id: int
+    ) -> int | None:
+        """Удаляет комментарий и возвращает ID поста.
+        Возвращает айди удаленного поста для проверки."""
         comment_post_id = await self.db.execute(
             delete(PostComment)
             .where(
@@ -79,19 +113,26 @@ class CommentRepository:
         return comment_post_id.scalar()
 
     @handle_repository_errors
-    async def get_comment_like(self, user_id: int, comment_id: int):
-        existing_like = await self.db.scalar(
-            select(CommentLike)
-            .where(
+    async def get_comment_like(
+        self,
+        user_id: int,
+        comment_id: int
+    ) -> CommentLike | None:
+        """Возвращает лайк комментария пользователя, если он есть."""
+        return await self.db.scalar(
+            select(CommentLike).where(
                 CommentLike.comment_id == comment_id,
                 CommentLike.user_id == user_id
             )
         )
 
-        return existing_like
-
     @handle_repository_errors
-    async def add_comment_like(self, comment_id: int, user_id: int):
+    async def add_comment_like(
+        self,
+        comment_id: int,
+        user_id: int
+    ):
+        """Добавляет лайк к комментариям (без дубликатов)."""
         await self.db.execute(
             insert(CommentLike)
             .values(comment_id=comment_id, user_id=user_id)
@@ -99,7 +140,11 @@ class CommentRepository:
         )
 
     @handle_repository_errors
-    async def increment_comment_likes_count(self, comment_id: int):
+    async def increment_comment_likes_count(
+        self,
+        comment_id: int
+    ):
+        """Увеличивает счётчик лайков комментария."""
         await self.db.execute(
             update(PostComment)
             .where(PostComment.comment_id == comment_id)
@@ -107,18 +152,32 @@ class CommentRepository:
         )
 
     @handle_repository_errors
-    async def delete_comment_like(self, existing_like: CommentLike):
+    async def delete_comment_like(
+        self,
+        existing_like: CommentLike
+    ):
+        """Удаляет лайк комментария."""
         await self.db.delete(existing_like)
 
     @handle_repository_errors
-    async def decrement_comment_likes_count(self, comment_id: int):
+    async def decrement_comment_likes_count(
+        self,
+        comment_id: int
+    ):
+        """Уменьшает счётчик лайков комментария."""
         await self.db.execute(
             update(PostComment)
             .where(PostComment.comment_id == comment_id)
             .values(likes_count=PostComment.likes_count - 1)
         )
 
-    async def get_comment_likes(self, comment_id: int, limit: int, offset: int):
+    async def get_comment_likes(
+        self,
+        comment_id: int,
+        limit: int,
+        offset: int
+    ) -> ScalarResult[CommentLike]:
+        """Возвращает список лайков комментария."""
         comment_likes = await self.db.scalars(
             select(CommentLike)
             .where(CommentLike.comment_id == comment_id)
