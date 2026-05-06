@@ -19,12 +19,12 @@ class UserProfile(Base):
     last_name: Mapped[str] = mapped_column(String(20), nullable=False)
     gender: Mapped[str] = mapped_column(String(6), nullable=False)
     birth: Mapped[date] = mapped_column(Date, nullable=False)
-    career: Mapped[str] = mapped_column(String(30))
-    education: Mapped[str] = mapped_column(String(30))
-    phone_number: Mapped[str] = mapped_column(String(15))
-    marital_status: Mapped[str] = mapped_column(String(20))
-    hometown: Mapped[str] = mapped_column(String(30))
-    about_me: Mapped[str] = mapped_column(String(50))
+    career: Mapped[str] = mapped_column(String(30), nullable=True)
+    education: Mapped[str] = mapped_column(String(30), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(15), nullable=True)
+    marital_status: Mapped[str] = mapped_column(String(20), nullable=True)
+    hometown: Mapped[str] = mapped_column(String(30), nullable=True)
+    about_me: Mapped[str] = mapped_column(String(50), nullable=True)
 
     user: Mapped["AuthUser"] = relationship(
         "AuthUser",

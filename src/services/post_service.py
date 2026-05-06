@@ -58,7 +58,7 @@ class PostService:
 
             await self.uow.commit()
 
-            post = self.uow.posts.get_post(post_id)
+            post = await self.uow.posts.get_post(post_id)
             return PostMapper.to_response(post)
 
         except IntegrityError:
@@ -83,7 +83,7 @@ class PostService:
 
             await self.uow.commit()
 
-            updated_post = self.uow.posts.get_post(
+            updated_post = await self.uow.posts.get_post(
                 updated_post_id
             )
 
