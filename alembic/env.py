@@ -18,8 +18,6 @@ def get_url():
     if not url:
         raise ValueError("DATABASE_URL is not set")
 
-    # ВАЖНО: для alembic всегда SYNC драйвер
-    # заменяем asyncpg -> psycopg2
     if "+asyncpg" in url:
         url = url.replace("+asyncpg", "+psycopg2")
 
@@ -27,8 +25,10 @@ def get_url():
 
 
 def run_migrations_online():
+    database_url = get_url()
+    
     connectable = create_engine(
-        config.get_main_option("sqlalchemy.url"),
+        database_url,
         poolclass=pool.NullPool,
     )
 
